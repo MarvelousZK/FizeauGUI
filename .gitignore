@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local build and test artifacts
+build/
+dist/
+release/
+.smoke_tmp/
+smoke_out.txt
+*.log
+
+# Generated analysis exports
+菲索干涉仪结果_*/
+仿真数据/菲索干涉仪结果_*/
+examples/simulated_data/菲索干涉仪结果_*/
+output/
+tmp/
+接收文件/
+
+# Locally rendered or exported documentation artifacts
+docs/**/*.docx
+
+# Original local icon source; the distributable icon is app_icon.ico
+QQ图片*.jpg

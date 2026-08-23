@@ -1,0 +1,72 @@
+name: Build Windows release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    env:
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: "utf-8"
+      QT_QPA_PLATFORM: "offscreen"
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        shell: pwsh
+        run: python -m pip install -r requirements.txt
+
+      - name: Run regression tests
+        shell: pwsh
+        run: |
+          $tests = @(
+            "tests/test_core.py",
+            "tests/test_luo_adapt2.py",
+            "tests/test_masked_shift.py",
+            "tests/test_qg_verify.py",
+            "tests/test_takeda_ft.py",
+            "tests/test_unwrap.py",
+            "tests/test_wft2.py",
+            "tests/test_gui_smoke.py"
+          )
+          foreach ($test in $tests) {
+            python $test
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
+      - name: Build executable
+        shell: pwsh
+        run: python -m PyInstaller --noconfirm --clean packaging/FizeauInterferometer.spec
+
+      - name: Prepare release assets
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path artifacts -Force | Out-Null
+          $builtExe = Get-ChildItem -LiteralPath dist -Filter *.exe | Select-Object -First 1
+          Copy-Item -LiteralPath $builtExe.FullName -Destination artifacts/FizeauGUI-Windows-x64.exe
+          $hash = (Get-FileHash artifacts/FizeauGUI-Windows-x64.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  FizeauGUI-Windows-x64.exe" | Set-Content artifacts/SHA256SUMS.txt -Encoding ascii
+
+      - name: Publish GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "${{ github.ref_name }}" 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create "${{ github.ref_name }}" --title "FizeauGUI ${{ github.ref_name }}" --generate-notes
+          }
+          gh release upload "${{ github.ref_name }}" artifacts/* --clobber
