@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """验证 qg_dunwrap 在合成无残差数据上的正确性。"""
 import numpy as np
+import _paths  # 将项目 src 目录加入可执行测试脚本的模块搜索路径
 from fizeau_gui.core import (qg_dunwrap,
                              phase_derivative_variance)
 
