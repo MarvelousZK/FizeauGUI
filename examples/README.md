@@ -1,7 +1,7 @@
 # 示例与仿真数据
 
 - `generate_simulation.py`：按固定随机种子生成可复现的菲索干涉图；
-- `plot_noll_zernike_coolwarm.py`：从 `n=1` 开始，将同阶 Noll Zernike 无标注地排成塔形；
+- `plot_noll_zernike_coolwarm.py`：从 `n=1` 开始，将同阶 Noll Zernike 排成塔形，并在各项旁标出 `n,m,j`；
 - `simulated_data/`：参考元件、待测元件、真值图和参数说明。
 
 从仓库根目录运行：

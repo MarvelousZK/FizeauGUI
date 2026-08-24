@@ -63,6 +63,13 @@ def noll_mode(j: int, rho: np.ndarray, theta: np.ndarray) -> np.ndarray:
     return normalization * radial * angular
 
 
+def signed_m(j: int, m: int) -> int:
+    """用正 m 表示余弦项、负 m 表示正弦项。"""
+    if m == 0:
+        return 0
+    return m if j % 2 == 0 else -m
+
+
 def plot_tower(
     max_n: int = 4,
     size: int = 301,
@@ -85,14 +92,14 @@ def plot_tower(
 
     widest_row = max_n + 1
     fig = plt.figure(
-        figsize=(2.0 * widest_row, 2.0 * max_n),
+        figsize=(2.65 * widest_row, 2.0 * max_n),
         facecolor="white",
     )
 
     horizontal_margin = 0.018
     vertical_margin = 0.025
     row_gap = 0.012
-    cell_gap = 0.010
+    cell_gap = 0.008
     usable_height = 1.0 - 2.0 * vertical_margin - row_gap * (max_n - 1)
     cell_height = usable_height / max_n
     widest_width = 1.0 - 2.0 * horizontal_margin
@@ -112,12 +119,15 @@ def plot_tower(
 
         for column_index in range(count):
             j = first_j + column_index
+            _, m_abs = noll_indices(j)
+            m = signed_m(j, m_abs)
             mode = noll_mode(j, rho, theta)
             mode = np.where(aperture, mode, np.nan)
             limit = float(np.nanmax(np.abs(mode)))
 
             left = row_left + column_index * (cell_width + cell_gap)
-            ax = fig.add_axes((left, bottom, cell_width, cell_height))
+            image_width = 0.75 * cell_width
+            ax = fig.add_axes((left, bottom, image_width, cell_height))
             ax.imshow(
                 mode,
                 origin="lower",
@@ -129,6 +139,18 @@ def plot_tower(
             )
             ax.set_axis_off()
             ax.set_aspect("equal")
+
+            m_text = "0" if m == 0 else f"{m:+d}".replace("-", "−")
+            fig.text(
+                left + 0.79 * cell_width,
+                bottom + 0.50 * cell_height,
+                f"$n={n}$\n$m={m_text}$\n$j={j}$",
+                ha="left",
+                va="center",
+                fontsize=max(7.0, 11.5 - 0.75 * (max_n - 4)),
+                linespacing=1.45,
+                color="#374151",
+            )
 
     return fig
 
