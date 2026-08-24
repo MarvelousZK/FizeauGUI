@@ -1,155 +1,148 @@
 # -*- coding: utf-8 -*-
-"""绘制前 11 项 Noll Zernike 模式的独立示例程序。"""
+"""以无标注塔形布局绘制 Noll Zernike 模式。"""
 
 from __future__ import annotations
 
 import argparse
+import math
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.ticker import MaxNLocator
 
 
-MODE_NAMES = (
-    "Piston",
-    "Tilt X (0°)",
-    "Tilt Y (90°)",
-    "Defocus",
-    "Astigmatism 45°",
-    "Astigmatism 0°",
-    "Coma Y",
-    "Coma X",
-    "Trefoil 30°",
-    "Trefoil 0°",
-    "Primary spherical",
-)
+def noll_indices(j: int) -> tuple[int, int]:
+    """返回 Noll 序号 j 对应的径向阶数 n 和角向频率 |m|。"""
+    if j < 1:
+        raise ValueError("Noll 序号 j 必须从 1 开始")
+
+    n = 0
+    while j > (n + 1) * (n + 2) // 2:
+        n += 1
+
+    cursor = n * (n + 1) // 2
+    for m in range(n + 1):
+        if (n - m) % 2 != 0:
+            continue
+        cursor += 1
+        if cursor == j:
+            return n, m
+        if m != 0:
+            cursor += 1
+            if cursor == j:
+                return n, m
+    raise RuntimeError(f"无法确定 Z{j} 的 Noll 指标")
 
 
-def first_11_noll(size: int = 301) -> tuple[np.ndarray, np.ndarray]:
-    """返回前 11 项归一化 Noll Zernike 及单位圆掩膜。"""
+def radial_polynomial(n: int, m: int, rho: np.ndarray) -> np.ndarray:
+    """计算 Zernike 径向多项式 R_n^m。"""
+    radial = np.zeros_like(rho, dtype=np.float64)
+    for s in range((n - m) // 2 + 1):
+        coefficient = (
+            (-1) ** s
+            * math.factorial(n - s)
+            / (
+                math.factorial(s)
+                * math.factorial((n + m) // 2 - s)
+                * math.factorial((n - m) // 2 - s)
+            )
+        )
+        radial += coefficient * rho ** (n - 2 * s)
+    return radial
+
+
+def noll_mode(j: int, rho: np.ndarray, theta: np.ndarray) -> np.ndarray:
+    """计算与软件 zStd 相同归一化及正弦/余弦约定的 Noll Zernike。"""
+    n, m = noll_indices(j)
+    radial = radial_polynomial(n, m, rho)
+    if m == 0:
+        return math.sqrt(n + 1) * radial
+
+    normalization = math.sqrt(2.0 * (n + 1))
+    angular = np.cos(m * theta) if j % 2 == 0 else np.sin(m * theta)
+    return normalization * radial * angular
+
+
+def plot_tower(
+    max_n: int = 4,
+    size: int = 301,
+    cmap_name: str = "coolwarm",
+) -> plt.Figure:
+    """从 n=1 开始按同阶同行的塔形布局绘制 Zernike 模式。"""
+    if max_n < 1:
+        raise ValueError("max_n 必须大于等于 1")
     if size < 51:
         raise ValueError("size 至少应为 51")
 
-    coord = np.linspace(-1.0, 1.0, int(size), dtype=np.float64)
-    x, y = np.meshgrid(coord, coord)
+    coordinate = np.linspace(-1.0, 1.0, int(size), dtype=np.float64)
+    x, y = np.meshgrid(coordinate, coordinate)
     rho = np.hypot(x, y)
     theta = np.arctan2(y, x)
-    mask = rho <= 1.0
+    aperture = rho <= 1.0
 
-    modes = np.stack(
-        [
-            np.ones_like(rho),
-            2.0 * rho * np.cos(theta),
-            2.0 * rho * np.sin(theta),
-            np.sqrt(3.0) * (2.0 * rho**2 - 1.0),
-            np.sqrt(6.0) * rho**2 * np.sin(2.0 * theta),
-            np.sqrt(6.0) * rho**2 * np.cos(2.0 * theta),
-            np.sqrt(8.0) * (3.0 * rho**3 - 2.0 * rho) * np.sin(theta),
-            np.sqrt(8.0) * (3.0 * rho**3 - 2.0 * rho) * np.cos(theta),
-            np.sqrt(8.0) * rho**3 * np.sin(3.0 * theta),
-            np.sqrt(8.0) * rho**3 * np.cos(3.0 * theta),
-            np.sqrt(5.0) * (6.0 * rho**4 - 6.0 * rho**2 + 1.0),
-        ],
-        axis=0,
-    )
-    modes[:, ~mask] = np.nan
-    return modes, mask
+    cmap = plt.colormaps[cmap_name].copy()
+    cmap.set_bad((1.0, 1.0, 1.0, 0.0))
 
-
-def plot_modes(
-    size: int = 301,
-    amplitude: float = 1.0,
-) -> tuple[plt.Figure, np.ndarray]:
-    """生成 4×3 排版的前 11 项 Noll Zernike 图。"""
-    if amplitude <= 0.0:
-        raise ValueError("amplitude 必须大于 0")
-    modes, _ = first_11_noll(size)
-    modes *= float(amplitude)
-
-    plt.rcParams.update(
-        {
-            "font.family": "DejaVu Sans",
-            "font.size": 9,
-            "axes.titlesize": 10,
-            "axes.labelsize": 8,
-            "xtick.labelsize": 7,
-            "ytick.labelsize": 7,
-        }
-    )
-
-    cmap = plt.colormaps["coolwarm"].copy()
-    cmap.set_bad("#f1f3f5")
-
-    fig, axes = plt.subplots(
-        4,
-        3,
-        figsize=(12.6, 15.2),
-        constrained_layout=True,
+    widest_row = max_n + 1
+    fig = plt.figure(
+        figsize=(2.0 * widest_row, 2.0 * max_n),
         facecolor="white",
     )
-    fig.suptitle("First 11 Noll Zernike modes", fontsize=16, weight="bold")
 
-    circle = np.linspace(0.0, 2.0 * np.pi, 500)
-    for index, (ax, mode, name) in enumerate(
-        zip(axes.flat, modes, MODE_NAMES), start=1
-    ):
-        valid = mode[np.isfinite(mode)]
-        if index == 1:
-            vmin, vmax = 0.0, float(amplitude)
-            if vmax == 0.0:
-                vmax = 1.0
-        else:
-            limit = float(np.max(np.abs(valid)))
-            if limit == 0.0:
-                limit = 1.0
-            vmin, vmax = -limit, limit
+    horizontal_margin = 0.018
+    vertical_margin = 0.025
+    row_gap = 0.012
+    cell_gap = 0.010
+    usable_height = 1.0 - 2.0 * vertical_margin - row_gap * (max_n - 1)
+    cell_height = usable_height / max_n
+    widest_width = 1.0 - 2.0 * horizontal_margin
+    cell_width = (widest_width - cell_gap * (widest_row - 1)) / widest_row
 
-        image = ax.imshow(
-            mode,
-            origin="lower",
-            extent=(-1.0, 1.0, -1.0, 1.0),
-            cmap=cmap,
-            vmin=vmin,
-            vmax=vmax,
-            interpolation="bilinear",
+    for row_index, n in enumerate(range(1, max_n + 1)):
+        count = n + 1
+        row_width = count * cell_width + (count - 1) * cell_gap
+        row_left = 0.5 - row_width / 2.0
+        bottom = (
+            1.0
+            - vertical_margin
+            - (row_index + 1) * cell_height
+            - row_index * row_gap
         )
-        ax.plot(np.cos(circle), np.sin(circle), color="#374151", linewidth=0.7)
-        ax.set_title(f"Z{index}  ·  {name}", pad=7)
-        ax.set_aspect("equal")
-        ax.set_xlim(-1.05, 1.05)
-        ax.set_ylim(-1.05, 1.05)
-        ax.set_xlabel("x / R")
-        ax.set_ylabel("y / R")
-        ax.set_xticks((-1.0, -0.5, 0.0, 0.5, 1.0))
-        ax.set_yticks((-1.0, -0.5, 0.0, 0.5, 1.0))
-        ax.tick_params(direction="in", length=3, width=0.7)
-        for spine in ax.spines.values():
-            spine.set_linewidth(0.7)
-            spine.set_color("#4b5563")
+        first_j = n * (n + 1) // 2 + 1
 
-        colorbar = fig.colorbar(image, ax=ax, fraction=0.047, pad=0.025)
-        colorbar.locator = MaxNLocator(nbins=5)
-        colorbar.update_ticks()
-        colorbar.outline.set_linewidth(0.6)
-        colorbar.set_label("Normalized amplitude", labelpad=5)
+        for column_index in range(count):
+            j = first_j + column_index
+            mode = noll_mode(j, rho, theta)
+            mode = np.where(aperture, mode, np.nan)
+            limit = float(np.nanmax(np.abs(mode)))
 
-    axes.flat[-1].axis("off")
-    return fig, axes
+            left = row_left + column_index * (cell_width + cell_gap)
+            ax = fig.add_axes((left, bottom, cell_width, cell_height))
+            ax.imshow(
+                mode,
+                origin="lower",
+                extent=(-1.0, 1.0, -1.0, 1.0),
+                cmap=cmap,
+                vmin=-limit,
+                vmax=limit,
+                interpolation="bilinear",
+            )
+            ax.set_axis_off()
+            ax.set_aspect("equal")
+
+    return fig
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="使用 coolwarm 绘制前 11 项 Noll Zernike 模式。"
+        description="从 n=1 开始，以无坐标、无标注的塔形布局绘制 Noll Zernike。"
     )
-    parser.add_argument("--size", type=int, default=301, help="每项的采样尺寸")
-    parser.add_argument(
-        "--amplitude", type=float, default=1.0, help="所有模式的统一幅值系数"
-    )
+    parser.add_argument("--max-n", type=int, default=4, help="绘制到的最大径向阶数")
+    parser.add_argument("--size", type=int, default=301, help="每个圆的采样尺寸")
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("zernike_noll_coolwarm.png"),
+        default=Path("zernike_noll_tower.png"),
         help="输出 PNG/PDF/SVG 路径",
     )
     parser.add_argument("--dpi", type=int, default=220, help="位图输出分辨率")
@@ -159,9 +152,15 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    fig, _ = plot_modes(size=args.size, amplitude=args.amplitude)
+    fig = plot_tower(max_n=args.max_n, size=args.size)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(args.output, dpi=args.dpi, bbox_inches="tight", facecolor="white")
+    fig.savefig(
+        args.output,
+        dpi=args.dpi,
+        bbox_inches="tight",
+        pad_inches=0.02,
+        facecolor="white",
+    )
     print(f"已保存：{args.output.resolve()}")
     if args.show:
         plt.show()
