@@ -75,7 +75,7 @@ def plot_tower(
     size: int = 301,
     cmap_name: str = "coolwarm",
 ) -> plt.Figure:
-    """从 n=1 开始按同阶同行的塔形布局绘制 Zernike 模式。"""
+    """从 n=0 开始按同阶同行的塔形布局绘制 Zernike 模式。"""
     if max_n < 1:
         raise ValueError("max_n 必须大于等于 1")
     if size < 51:
@@ -90,9 +90,10 @@ def plot_tower(
     cmap = plt.colormaps[cmap_name].copy()
     cmap.set_bad((1.0, 1.0, 1.0, 0.0))
 
+    row_count = max_n + 1
     widest_row = max_n + 1
     fig = plt.figure(
-        figsize=(2.65 * widest_row, 2.0 * max_n),
+        figsize=(2.65 * widest_row, 2.0 * row_count),
         facecolor="white",
     )
 
@@ -100,12 +101,12 @@ def plot_tower(
     vertical_margin = 0.025
     row_gap = 0.012
     cell_gap = 0.008
-    usable_height = 1.0 - 2.0 * vertical_margin - row_gap * (max_n - 1)
-    cell_height = usable_height / max_n
+    usable_height = 1.0 - 2.0 * vertical_margin - row_gap * (row_count - 1)
+    cell_height = usable_height / row_count
     widest_width = 1.0 - 2.0 * horizontal_margin
     cell_width = (widest_width - cell_gap * (widest_row - 1)) / widest_row
 
-    for row_index, n in enumerate(range(1, max_n + 1)):
+    for row_index, n in enumerate(range(0, max_n + 1)):
         count = n + 1
         row_width = count * cell_width + (count - 1) * cell_gap
         row_left = 0.5 - row_width / 2.0
@@ -157,7 +158,7 @@ def plot_tower(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="从 n=1 开始，以无坐标、无标注的塔形布局绘制 Noll Zernike。"
+        description="从 n=0 开始，以塔形布局绘制 Noll Zernike。"
     )
     parser.add_argument("--max-n", type=int, default=4, help="绘制到的最大径向阶数")
     parser.add_argument("--size", type=int, default=301, help="每个圆的采样尺寸")
