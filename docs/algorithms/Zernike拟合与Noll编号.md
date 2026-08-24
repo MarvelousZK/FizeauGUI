@@ -19,8 +19,7 @@ $$
 其中，$\rho$ 表示某一点到孔径中心的归一化距离，孔径中心为 $\rho=0$，孔径边缘为 $\rho=1$；$\theta$ 表示该点相对于 $x$ 轴的方向角。每一个 Zernike 多项式都可以看成径向部分和角向部分的乘积：
 
 $$
-Z_n^m(\rho,\theta)
-=
+Z_n^m(\rho,\theta) =
 \underbrace{R_n^{|m|}(\rho)}_{\text{径向部分}}
 \underbrace{\Theta_m(\theta)}_{\text{角向部分}}.
 $$
@@ -189,8 +188,7 @@ $$
 若干涉仪输出的相位为 $\phi$，单位为弧度，则相位与光程差 OPD 的关系为
 
 $$
-\phi
-=
+\phi =
 \frac{2\pi}{\lambda}\mathrm{OPD}.
 $$
 
@@ -203,8 +201,7 @@ $$
 相应的相位形式的Zernike系数$c_j^{(\phi)}$可以转化为面形高度系数
 
 $$
-c_j^{(h)}
-=
+c_j^{(h)} =
 \frac{\lambda}{2D\pi}
 c_j^{(\phi)}.
 $$
