@@ -1349,7 +1349,7 @@ class MainWindow(QMainWindow):
 
         self.combo_phase = QComboBox()
         self.combo_phase.addItem("经典 Fourier FT/Takeda", "takeda")
-        self.combo_phase.addItem("掩膜感知空间相移", "masked")
+        self.combo_phase.addItem("空间载波相移", "masked")
         self.combo_phase.addItem("Luo 单载频自适应相移 (adapt2)", "adapt2")
         self.combo_phase.addItem("掩膜自适应加窗傅里叶滤波 (Qian WFF)", "wft2")
         self.combo_phase.setToolTip("条纹相位提取算法")

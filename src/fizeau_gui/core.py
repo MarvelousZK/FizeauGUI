@@ -4,7 +4,7 @@
 ====================================
 
 菲索干涉图的完整处理流程：
-    读图 → 掩膜(圆形孔径) → 相移法提取相位（掩膜感知/经典可选）
+    读图 → 掩膜(圆形孔径) → 单帧载波法提取相位（多种算法可选）
     → 相位展开 → 相位差 → Zernike 拟合(默认 80 项)
     → 依次去前 1..N 项残差 (RMS/PV)
 
@@ -122,7 +122,7 @@ def s_T_shift(I: np.ndarray, step: int, P: int = 1, s: int = 21) -> np.ndarray:
 
 def masked_s_T_shift(I: np.ndarray, mask: np.ndarray, step: int,
                      P: int = 1, s: int = 21) -> np.ndarray:
-    """mask 感知的空间载波相移，完整口径版。
+    """带有效孔径边界约束的空间载波相移。
 
     内部像素与 :func:`s_T_shift` 使用完全相同的单周期正弦投影。靠近圆周时，
     将长度为 ``step`` 的窗口向孔径内部平移，保证只使用 mask 内有效像素；
@@ -1394,7 +1394,7 @@ def build_mask(image_shape, cx: float, cy: float, maskr: int) -> MaskInfo:
 
 _PHASE_METHOD_LABELS = {
     "takeda": "经典 Fourier-transform 法 (Takeda FT)",
-    "masked": "掩膜感知空间相移",
+    "masked": "空间载波相移",
     "classic": "经典空间相移 (s_T_shift)",
     "adapt2": "Luo 单载频自适应空间相移 (adapt2)",
     "wft2": "掩膜自适应加窗傅里叶滤波 (Qian WFF)",
@@ -1503,7 +1503,7 @@ def process_fizeau(ref_path: str, test_path: str, period: int,
         max_term      : Zernike 拟合项数，默认 80
         n_remove      : 分解项数：依次输出去前 1..n_remove 项残差，默认 11
         phase_method  : 条纹相位提取算法:
-                        "takeda"(经典 FT) / "masked"(掩膜感知相移, 默认)
+                        "takeda"(经典 FT) / "masked"(空间载波相移, 默认)
                         / "classic"(经典 s_T_shift) / "adapt2"(自适应空间相移)
                         / "wft2"(加窗傅里叶滤波)
         ft_carrier_cycles : FT 手动载频 (fx, fy)；None 时自动搜索边带
@@ -1526,7 +1526,7 @@ def process_fizeau(ref_path: str, test_path: str, period: int,
     phase_method = str(phase_method).lower()
     if phase_method not in ("takeda", "masked", "classic", "adapt2", "wft2"):
         raise ValueError(
-            "phase_method 必须是 'takeda'(经典 FT) / 'masked'(掩膜感知相移) / "
+            "phase_method 必须是 'takeda'(经典 FT) / 'masked'(空间载波相移) / "
             "'classic'(经典 s_T_shift) / 'adapt2'(自适应相移) / "
             "'wft2'(加窗傅里叶滤波)")
 
@@ -1578,9 +1578,9 @@ def process_fizeau(ref_path: str, test_path: str, period: int,
             "phase_sign": int(ft_phase_sign),
         }
     elif phase_method == "masked":
-        report(14, "待测元件条纹相位提取 (掩膜感知相移)…")
+        report(14, "待测元件条纹相位提取 (空间载波相移)…")
         pd = masked_s_T_shift(Imaged, mask, int(period), 1, 21)
-        report(32, "参考元件条纹相位提取 (掩膜感知相移)…")
+        report(32, "参考元件条纹相位提取 (空间载波相移)…")
         pc = masked_s_T_shift(Imagec, mask, int(period), 1, 21)
     elif phase_method == "classic":
         report(14, "待测元件条纹相位提取 (经典相移 s_T_shift)…")

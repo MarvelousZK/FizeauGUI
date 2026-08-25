@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""验证 ChatGPT 新增的 masked_s_T_shift 与全口径统计的正确性。"""
+"""验证带孔径边界约束的空间载波相移及全口径统计。"""
 import os
 import numpy as np
 from _paths import DATA_DIR
