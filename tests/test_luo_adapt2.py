@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Luo 单载频 adapt2 的确定性数值回归。"""
+"""最小二乘空间载波相移 LS-SCPS 的确定性数值回归。"""
 
 import numpy as np
 from scipy.ndimage import binary_erosion
@@ -94,7 +94,7 @@ def main():
     else:
         raise AssertionError("小于增量窗口的图像未被拒绝")
 
-    print("LUO ADAPT2 TEST PASSED")
+    print("LS-SCPS TEST PASSED")
 
 
 if __name__ == "__main__":

@@ -34,11 +34,16 @@ assert not win.windowIcon().isNull(), "程序图标未载入"
 assert win.btn_github.toolTip() == GITHUB_URL
 assert GITHUB_URL == "https://github.com/MarvelousZK/FizeauGUI"
 assert win.workflow_tabs.count() == 3, "左侧未建立准备/处理/结果三段式工作流"
-assert win.combo_phase.currentData() == "takeda", "Takeda FT 应为默认第一种算法"
-assert win.combo_phase.findData("classic") == -1, "学生界面不应再显示经典相移"
+assert win.combo_phase.currentData() == "takeda", "傅里叶变换FT应为默认第一种算法"
+assert win.combo_phase.findData("classic") == -1, "界面不应再显示经典相移"
 assert [win.combo_phase.itemData(i) for i in range(win.combo_phase.count())] == \
     ["takeda", "masked", "adapt2", "wft2"]
-assert "Luo" in win.combo_phase.itemText(win.combo_phase.findData("adapt2"))
+assert [win.combo_phase.itemText(i) for i in range(win.combo_phase.count())] == [
+    "傅里叶变换FT",
+    "空间载波相移SCPS",
+    "最小二乘空间载波相移LS-SCPS",
+    "加窗傅里叶变换WFT",
+]
 assert win.result_group.objectName() == "resultGroup"
 assert "QGroupBox#resultGroup::title" not in LIGHT["qss"], \
     "结果标题不应用背景色遮挡边框"
@@ -74,16 +79,16 @@ assert win.result.global_pv < 400.0, "仿真全口径仍存在异常边缘 PV �
 print(f"3. 处理完成 OK  全局 RMS={win.result.global_rms:.2f} nm  PV={win.result.global_pv:.2f} nm")
 print(f"   系数表行数: {win.table.rowCount()}  残差下拉项数: {win.combo_resid.count()}")
 
-# Luo 算法必须在完整圆口径统计下抑制旧版的 ±2π 边缘枝错。
+# LS-SCPS 必须在完整圆口径统计下抑制旧版的 ±2π 边缘枝错。
 luo_result = process_fizeau(**params, phase_method="adapt2")
 assert luo_result.global_pv < 400.0, \
-    f"Luo adapt2 仍存在严重圆口径边缘误差: PV={luo_result.global_pv:.2f} nm"
-print(f"3.0 Luo 圆口径边缘稳定 OK  RMS={luo_result.global_rms:.2f} nm  "
+    f"LS-SCPS 仍存在严重圆口径边缘误差: PV={luo_result.global_pv:.2f} nm"
+print(f"3.0 LS-SCPS 圆口径边缘稳定 OK  RMS={luo_result.global_rms:.2f} nm  "
       f"PV={luo_result.global_pv:.2f} nm")
 
-# 切换到经典 Takeda FT，验证专用参数、频谱诊断页和完整流水线。
+# 切换到傅里叶变换FT，验证专用参数、频谱诊断页和完整流水线。
 ft_index = win.combo_phase.findData("takeda")
-assert ft_index >= 0, "GUI 未提供 Takeda FT 算法"
+assert ft_index >= 0, "GUI 未提供傅里叶变换FT算法"
 win.workflow_tabs.setCurrentIndex(1)
 win.combo_phase.setCurrentIndex(ft_index)
 app.processEvents()
@@ -92,7 +97,7 @@ assert not win.ft_advanced_panel.isVisible(), "FT 高级设置应默认收起"
 win.btn_ft_advanced.setChecked(True)
 assert win.ft_advanced_panel.isVisible(), "FT 高级设置无法展开"
 win.btn_ft_advanced.setChecked(False)
-assert not win.check_ft_auto.isChecked(), "FT 教学模式应默认手动选边带"
+assert not win.check_ft_auto.isChecked(), "FT 模式应默认手动选边带"
 assert win.btn_ft_manual_pick.isEnabled(), "手动频谱选择入口未启用"
 assert (win.spin_ft_fx.value(), win.spin_ft_fy.value()) == (0, 0)
 assert win.spin_ft_sigma.value() == 8.0
@@ -148,7 +153,7 @@ for i in range(win.combo_ft_diag.count()):
     win.combo_ft_diag.setCurrentIndex(i)
     app.processEvents()
 assert "cyc/img" in win.lbl_ft_meta.text()
-print(f"3.2 Takeda FT + 频谱诊断 OK  RMS={win.result.global_rms:.2f} nm  "
+print(f"3.2 傅里叶变换FT + 频谱诊断 OK  RMS={win.result.global_rms:.2f} nm  "
       f"PV={win.result.global_pv:.2f} nm")
 
 # 切换各显示页

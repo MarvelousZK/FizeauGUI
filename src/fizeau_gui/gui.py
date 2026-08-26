@@ -269,7 +269,7 @@ class ImageCanvas(QWidget):
             self.canvas.draw_idle()
 
 
-# ---------------------------------------------------------------- 教学工具
+# ---------------------------------------------------------------- 辅助工具
 
 class TwoPointPicker:
     """在 matplotlib 画布上依次点两个点的通用拾取器。"""
@@ -322,7 +322,7 @@ class TwoPointPicker:
 
 
 class FTSidebandDialog(QDialog):
-    """让学生在二维频谱上亲自选择一级边带和 Gaussian 窗宽。"""
+    """在二维频谱上手动选择一级边带和 Gaussian 窗宽。"""
 
     def __init__(self, spectrum_log, sigma=8.0, initial_carrier=None,
                  parent=None, face="#FFFFFF", text="#3A3F47"):
@@ -692,7 +692,7 @@ class Surface3DDialog(QDialog):
 
 
 class SimulatorDialog(QDialog):
-    """教学仿真面形生成器：设定像差 → 生成干涉图并载入软件。"""
+    """仿真面形生成器：设定像差 → 生成干涉图并载入软件。"""
 
     TERM_DEFS = [
         (4, "离焦 Defocus", 40.0),
@@ -802,10 +802,10 @@ class SimulatorDialog(QDialog):
                 noise=self.spin_noise.value(),
                 test_aberrations=test_ab or {11: 0.0},
             )
-            outdir = os.path.join(tempfile.gettempdir(), "fizeau_sim_teaching")
+            outdir = os.path.join(tempfile.gettempdir(), "fizeau_simulation")
             os.makedirs(outdir, exist_ok=True)
-            ref_path = os.path.join(outdir, "仿真_教学_参考.bmp")
-            test_path = os.path.join(outdir, "仿真_教学_待测.bmp")
+            ref_path = os.path.join(outdir, "仿真_参考.bmp")
+            test_path = os.path.join(outdir, "仿真_待测.bmp")
             for path, key in ((ref_path, "I_ref"), (test_path, "I_test")):
                 arr = np.uint8(np.clip(np.round(payload[key]), 0, 255))
                 Image.fromarray(arr).save(path)
@@ -820,7 +820,7 @@ class SimulatorDialog(QDialog):
 
 
 class TruthCompareDialog(QDialog):
-    """真值对照：学生设定的像差 vs 软件拟合结果。"""
+    """真值对照：设定像差与软件拟合结果。"""
 
     def __init__(self, truth, res, parent=None):
         super().__init__(parent)
@@ -1037,7 +1037,7 @@ class MainWindow(QMainWindow):
         l1.addWidget(self.lbl_mask_tip)
         l1.addWidget(self.canvas_img)
 
-        # FT 教学诊断：原始频谱、边带窗、滤波频谱、复场质量
+        # FT 诊断：原始频谱、边带窗、滤波频谱、复场质量
         self.ft_tab = QWidget()
         lft = QVBoxLayout(self.ft_tab)
         bar_ft = QHBoxLayout()
@@ -1059,7 +1059,7 @@ class MainWindow(QMainWindow):
         self.lbl_ft_meta.setObjectName("statLabel")
         bar_ft.addWidget(self.lbl_ft_meta)
         lft.addLayout(bar_ft)
-        self.canvas_ft.show_message("在相位算法中选择“经典 Fourier FT/Takeda”并开始处理")
+        self.canvas_ft.show_message("在相位算法中选择“傅里叶变换FT”并开始处理")
         lft.addWidget(self.canvas_ft)
 
         # Tab2: 截断相位
@@ -1119,7 +1119,7 @@ class MainWindow(QMainWindow):
         self.lbl_resid_stat.setObjectName("statLabel")
         bar4.addWidget(self.lbl_resid_stat)
         l4.addLayout(bar4)
-        # 教学交互：去项分解滑块 + 单项像差视图
+        # 去项分解滑块 + 单项像差视图
         row_k = QHBoxLayout()
         row_k.addWidget(QLabel("去项分解:"))
         self.slider_k = QSlider(Qt.Horizontal)
@@ -1140,7 +1140,7 @@ class MainWindow(QMainWindow):
         l4.addWidget(self.canvas_resid)
 
         self.tabs.addTab(t1, "干涉图")
-        self.tabs.addTab(self.ft_tab, "FT 诊断")
+        self.tabs.addTab(self.ft_tab, "FT 频谱")
         self.tabs.addTab(t2, "截断相位")
         self.tabs.addTab(t3, "展开相位")
         self.tabs.addTab(t4, "面形")
@@ -1250,7 +1250,7 @@ class MainWindow(QMainWindow):
             self.lbl_log_summary.setText(last[:64])
 
     def open_github(self):
-        """打开作者仓库，供读者继续学习 WFT/Luo 等拓展内容。"""
+        """打开作者仓库，供读者继续查看算法文档与拓展内容。"""
         if not QDesktopServices.openUrl(QUrl(GITHUB_URL)):
             QMessageBox.warning(self, "无法打开链接", f"请在浏览器中访问:\n{GITHUB_URL}")
 
@@ -1348,10 +1348,10 @@ class MainWindow(QMainWindow):
         self.spin_zterm.valueChanged.connect(self._on_zterm_changed)
 
         self.combo_phase = QComboBox()
-        self.combo_phase.addItem("经典 Fourier FT/Takeda", "takeda")
-        self.combo_phase.addItem("空间载波相移", "masked")
-        self.combo_phase.addItem("Luo 单载频自适应相移 (adapt2)", "adapt2")
-        self.combo_phase.addItem("掩膜自适应加窗傅里叶滤波 (Qian WFF)", "wft2")
+        self.combo_phase.addItem("傅里叶变换FT", "takeda")
+        self.combo_phase.addItem("空间载波相移SCPS", "masked")
+        self.combo_phase.addItem("最小二乘空间载波相移LS-SCPS", "adapt2")
+        self.combo_phase.addItem("加窗傅里叶变换WFT", "wft2")
         self.combo_phase.setToolTip("条纹相位提取算法")
 
         for control in (self.spin_period, self.spin_wl,
@@ -1383,7 +1383,7 @@ class MainWindow(QMainWindow):
         self.check_ft_auto = QCheckBox("自动检测一级边带（仅用于对照）")
         self.check_ft_auto.setChecked(False)
         self.check_ft_auto.setToolTip(
-            "教学时建议保持关闭；勾选后软件将代替学生搜索一级谱峰")
+            "建议保持关闭并手动选择谱峰；勾选后软件将自动搜索一级谱峰")
         self.spin_ft_fx = QSpinBox()
         self.spin_ft_fx.setRange(-10000, 10000)
         self.spin_ft_fx.setValue(0)
@@ -1629,10 +1629,10 @@ class MainWindow(QMainWindow):
                 noise=self.sim_spin_noise.value(),
                 test_aberrations=test_ab or {11: 0.0},
             )
-            outdir = os.path.join(tempfile.gettempdir(), "fizeau_sim_teaching")
+            outdir = os.path.join(tempfile.gettempdir(), "fizeau_simulation")
             os.makedirs(outdir, exist_ok=True)
-            ref_path = os.path.join(outdir, "仿真_教学_参考.bmp")
-            test_path = os.path.join(outdir, "仿真_教学_待测.bmp")
+            ref_path = os.path.join(outdir, "仿真_参考.bmp")
+            test_path = os.path.join(outdir, "仿真_待测.bmp")
             for path, key in ((ref_path, "I_ref"), (test_path, "I_test")):
                 arr = np.uint8(np.clip(np.round(payload[key]), 0, 255))
                 Image.fromarray(arr).save(path)
@@ -1728,7 +1728,7 @@ class MainWindow(QMainWindow):
             else "高级设置 · 自动对照 / 相位符号  ▸")
 
     def _open_ft_sideband_dialog(self):
-        """从当前 ROI 计算频谱，让学生点击选择一级边带。"""
+        """从当前 ROI 计算频谱并手动选择一级边带。"""
         image = self.test_img if self.test_img is not None else self.ref_img
         source_name = "待测" if self.test_img is not None else "参考"
         if image is None:
@@ -1778,7 +1778,7 @@ class MainWindow(QMainWindow):
             f"fy={carrier[1]} cyc/img, 距离DC={distance:.1f}px, "
             f"Gaussian σ={dialog.filter_sigma:.1f}px")
 
-    # ---------------- 教学工具 ----------------
+    # ---------------- 辅助工具 ----------------
 
     def _auto_estimate_period(self):
         img = self.ref_img if self.ref_img is not None else self.test_img
@@ -1906,7 +1906,7 @@ class MainWindow(QMainWindow):
         self.on_img_combo()
         self.on_auto_detect(silent_fail=True)
 
-    # ---------------- Zernike 教学交互 ----------------
+    # ---------------- Zernike 交互 ----------------
 
     def _on_slider_k(self, value: int):
         self.lbl_k.setText(f"去前 {value} 项")
@@ -2074,7 +2074,7 @@ class MainWindow(QMainWindow):
                 self.spin_ft_fx.value() == 0 and self.spin_ft_fy.value() == 0):
             QMessageBox.information(
                 self, "请先手动选择一级边带",
-                "FT 教学模式不会自动替你寻找谱峰。\n\n"
+                "当前未启用一级边带自动检测。\n\n"
                 "请点击【① 查看频谱并手动点选一级边带】，在二维频谱中"
                 "选择一个与中心 DC 分离的一级谱峰，然后再开始处理。")
             return
@@ -2156,7 +2156,7 @@ class MainWindow(QMainWindow):
             f"全局 RMS: {res.global_rms:.3f} nm     PV: {res.global_pv:.3f} nm")
         self._fill_table(res)
 
-        # 残差下拉框 + 教学交互控件
+        # 残差下拉框 + 交互控件
         self.combo_resid.blockSignals(True)
         self.combo_resid.clear()
         self.combo_resid.addItems(["全局 (未去项)"] +
@@ -2197,7 +2197,7 @@ class MainWindow(QMainWindow):
             if test_ft.filter_too_wide or ref_ft.filter_too_wide:
                 self.log("警告: FT 滤波窗相对载频过宽，可能混入 DC")
         else:
-            self.canvas_ft.show_message("当前结果不是 Takeda FT；请选择 FT 算法后重新处理")
+            self.canvas_ft.show_message("当前结果不是傅里叶变换FT；请选择该算法后重新处理")
             self.lbl_ft_meta.setText("")
 
         self.on_trunc_combo()
@@ -2228,7 +2228,7 @@ class MainWindow(QMainWindow):
 
     def on_ft_diag_combo(self, *_):
         if self.result is None or not self.result.ft_diagnostics:
-            self.canvas_ft.show_message("请先使用经典 Takeda FT 完成处理")
+            self.canvas_ft.show_message("请先使用傅里叶变换FT完成处理")
             self.lbl_ft_meta.setText("")
             return
         data = self.combo_ft_diag.currentData()
@@ -2327,22 +2327,22 @@ class MainWindow(QMainWindow):
                 save(r['W'], f"Zernike多项式去前{r['k']}项后相位分布图.png",
                      f"Remove {r['k']} terms, RMS = {r['rms']:.3f} nm, PV = {r['pv']:.3f} nm")
 
-            # Takeda FT 教学诊断：频谱、滤波窗、复场幅值与置信度
+            # 傅里叶变换 FT 诊断：频谱、滤波窗、复场幅值与置信度
             if res.ft_diagnostics:
                 for source, source_cn in (("test", "待测"), ("reference", "参考")):
                     ft = res.ft_diagnostics[source]
                     save(ft.spectrum_log, f"FT_{source_cn}_原始对数频谱.png",
-                         f"Takeda FT Spectrum - {source_cn}", cmap="magma")
+                         f"傅里叶变换FT · 原始频谱 - {source_cn}", cmap="magma")
                     save(ft.sideband_filter, f"FT_{source_cn}_Gaussian边带窗.png",
-                         f"Takeda FT Sideband Filter - {source_cn}", cmap="viridis")
+                         f"傅里叶变换FT · 边带窗 - {source_cn}", cmap="viridis")
                     save(ft.filtered_spectrum_log, f"FT_{source_cn}_滤波后频谱.png",
-                         f"Takeda FT Filtered Spectrum - {source_cn}", cmap="magma")
+                         f"傅里叶变换FT · 滤波后频谱 - {source_cn}", cmap="magma")
                     save(ft.amplitude, f"FT_{source_cn}_复场幅值.png",
-                         f"Takeda FT Complex Amplitude - {source_cn}", cmap="viridis")
+                         f"傅里叶变换FT · 复场幅值 - {source_cn}", cmap="viridis")
                     save(ft.confidence, f"FT_{source_cn}_相位置信度.png",
-                         f"Takeda FT Phase Confidence - {source_cn}", cmap="viridis")
+                         f"傅里叶变换FT · 相位置信度 - {source_cn}", cmap="viridis")
                     save(ft.window, f"FT_{source_cn}_Hann窗.png",
-                         f"Takeda FT Hann Window - {source_cn}", cmap="viridis")
+                         f"傅里叶变换FT · Hann 窗 - {source_cn}", cmap="viridis")
 
             # 掩膜叠加图
             img = self.ref_img
@@ -2383,13 +2383,13 @@ class MainWindow(QMainWindow):
             "② 检查自动检测的绿色孔径圆；拖动圆心、圆周或滚轮可微调，"
             "也可在“有效孔径”中输入数值；\n"
             "③ 切换到【2 处理】并检查参数：条纹周期是相邻两条纹的像素间距；\n"
-            "④ FT 教学：选择【经典 Fourier FT/Takeda】，点击"
+            "④ FT 处理：选择【傅里叶变换FT】，点击"
             "【查看频谱并手动点选一级边带】；先辨认中心 DC 和成对一级谱峰，"
-            "再亲自点击其中一个谱峰，并调整 Gaussian σ；\n"
-            "⑤ 点击左栏底部固定的【开始处理】，在【FT 诊断】页检查所选边带、"
+            "再点击其中一个谱峰，并调整 Gaussian σ；\n"
+            "⑤ 点击左栏底部固定的【开始处理】，在【FT 频谱】页检查所选边带、"
             "滤波窗、复场幅值和置信度；\n"
             "⑥ 完成后左栏自动进入【3 结果】，右侧可查看截断相位、展开相位和面形；\n"
-            "⑦ 自动边带仅用于课后对照；【导出结果】保存全部图片和报告。"
+            "⑦ 自动边带可用于与手动选峰结果对照；【导出结果】保存全部图片和报告。"
             "底部【运行日志】按需展开，拓展算法见顶部 GitHub。\n\n"
             "结果含义: 残差图 RMS/PV 越小代表面形越接近对应 Zernike 前 N 项拟合。")
 

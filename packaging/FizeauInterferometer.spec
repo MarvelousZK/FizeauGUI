@@ -25,6 +25,20 @@ a = Analysis(
     noarchive=False,
     optimize=0,
 )
+
+# Codex/Poppler may place its private ICU 78 DLLs on PATH. Qt 6 on Windows
+# imports the unversioned system ICU API, so bundling those suffixed exports
+# beside the executable makes QtCore fail with WinError 127 at startup.
+_foreign_icu = {"icuuc.dll", "icudt78.dll"}
+a.binaries = [
+    item for item in a.binaries
+    if Path(item[0]).name.lower() not in _foreign_icu
+]
+a.datas = [
+    item for item in a.datas
+    if Path(item[0]).name.lower() not in _foreign_icu
+]
+
 pyz = PYZ(a.pure)
 
 exe = EXE(

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""掩膜自适应 Qian WFF 的确定性数值回归。"""
+"""加窗傅里叶变换 WFT 的确定性数值回归。"""
 
 import numpy as np
 

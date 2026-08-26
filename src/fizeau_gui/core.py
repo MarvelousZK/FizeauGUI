@@ -200,8 +200,8 @@ def masked_s_T_shift(I: np.ndarray, mask: np.ndarray, step: int,
 
 
 # ---------------------------------------------------------------- 经典算法移植
-# adapt2: Luo 单载频自适应空间相移
-# wft2  : 加窗傅里叶滤波 WFF  (原 MATLAB wft2.m / onestep_wff.m)
+# LS-SCPS（内部兼容键 adapt2）：最小二乘空间载波相移
+# WFT（内部兼容键 wft2）：加窗傅里叶变换（原 MATLAB wft2.m / onestep_wff.m）
 
 
 def _luo_dominant_axis(I: np.ndarray,
@@ -229,7 +229,7 @@ def _luo_dominant_axis(I: np.ndarray,
 
 def _luo_phase_increment(I: np.ndarray, period: int, axis: int,
                          mask: Optional[np.ndarray] = None) -> np.ndarray:
-    """按 Luo 等式 (6)--(9) 估计指定方向的逐像素相位增量。"""
+    """按 LS-SCPS 参考模型估计指定方向的逐像素相位增量。"""
     work = I if axis == 1 else I.T
     work_mask = (np.ones_like(work, dtype=bool) if mask is None else
                  (np.asarray(mask, dtype=bool)
@@ -241,7 +241,7 @@ def _luo_phase_increment(I: np.ndarray, period: int, axis: int,
     if n_samples <= 2 * half_window:
         direction = "列(x)" if axis == 1 else "行(y)"
         raise ValueError(
-            f"图像在{direction}方向太小，Luo adapt2 至少需要 "
+            f"图像在{direction}方向太小，最小二乘空间载波相移LS-SCPS至少需要 "
             f"{2 * half_window + 1} 个像素")
 
     delta = np.full((n_lines, n_samples), np.nan, dtype=np.float64)
@@ -299,7 +299,7 @@ def _luo_phase_increment(I: np.ndarray, period: int, axis: int,
 def _luo_single_carrier_fit(I: np.ndarray, delta: np.ndarray,
                             period: int, axis: int,
                             mask: Optional[np.ndarray] = None) -> np.ndarray:
-    """用 Luo 五参数模型的单载频三参数退化式恢复中心相位。"""
+    """用 LS-SCPS 五参数模型的单载频三参数退化式恢复中心相位。"""
     work = I if axis == 1 else I.T
     shifts = delta if axis == 1 else delta.T
     work_mask = (np.ones_like(work, dtype=bool) if mask is None else
@@ -310,7 +310,7 @@ def _luo_single_carrier_fit(I: np.ndarray, delta: np.ndarray,
     # 局部重建窗口不超过一个周期；至少 3 点才能辨识 [a, B, C]。
     half_window = max(1, int(np.floor((period - 2) / 2.0)))
     if n_samples <= 2 * half_window:
-        raise ValueError("图像太小，无法进行 Luo adapt2 局部最小二乘拟合")
+        raise ValueError("图像太小，无法进行最小二乘空间载波相移LS-SCPS拟合")
 
     inner = n_samples - 2 * half_window
     centers = slice(half_window, n_samples - half_window)
@@ -362,7 +362,7 @@ def _luo_single_carrier_fit(I: np.ndarray, delta: np.ndarray,
     inner_phase = full[:, half_window:n_samples - half_window]
     inner_phase[fully_supported] = phase[fully_supported]
 
-    # 对每条有效弦，依据 Luo 已估计的局部相位增量从最近锚点延拓到
+    # 对每条有效弦，依据 LS-SCPS 已估计的局部相位增量从最近锚点延拓到
     # 边缘；这保留相位斜率，不再把矩形首尾相位平铺到圆口径边缘。
     for line in range(n_lines):
         targets = np.flatnonzero(work_mask[line])
@@ -436,7 +436,7 @@ def _luo_single_carrier_fit(I: np.ndarray, delta: np.ndarray,
 def adapt2_phase(I: np.ndarray, period: int,
                  mask: Optional[np.ndarray] = None) -> np.ndarray:
     """
-    Luo 单载频自适应空间相移相位提取。
+    最小二乘空间载波相移 LS-SCPS 相位提取。
 
     论文正式模型针对正交双载频，局部强度写成五参数线性模型。本程序的
     菲索图只有一组主载频，因此先自动判断 x/y 主方向，再保留论文模型中
@@ -444,12 +444,12 @@ def adapt2_phase(I: np.ndarray, period: int,
     振幅为零时的代数退化形式，可避免把单载频数据硬塞入秩亏的五参数方程。
 
     步骤：
-      1. 按 Luo 等式 (6)--(9) 估计主方向逐像素相位增量；
+      1. 按参考文献等式 (6)--(9) 估计主方向逐像素相位增量；
       2. 累加邻点相对于中心像素的空间相移量 alpha；
       3. 按等式 (12)--(17) 的单载频三参数形式逐像素最小二乘求相位。
 
-    参考：P. Luo et al., Optical Engineering 59(2), 024103 (2020),
-    doi:10.1117/1.OE.59.2.024103.
+    参考：Optical Engineering 59(2), 024103 (2020),
+    doi:10.1117/1.OE.59.2.024103。
 
     参数:
         I      : 单张干涉图 (m x n)
@@ -467,7 +467,7 @@ def adapt2_phase(I: np.ndarray, period: int,
     if period < 3:
         raise ValueError("条纹周期必须 >= 3")
     if min(I.shape) < 3:
-        raise ValueError("图像太小，无法进行 Luo adapt2 相位提取")
+        raise ValueError("图像太小，无法进行最小二乘空间载波相移LS-SCPS")
     if mask is None:
         valid_mask = np.ones(I.shape, dtype=bool)
     else:
@@ -475,7 +475,7 @@ def adapt2_phase(I: np.ndarray, period: int,
         if valid_mask.shape != I.shape:
             raise ValueError("mask 必须与 I 形状相同")
         if np.count_nonzero(valid_mask) < 3:
-            raise ValueError("有效口径像素太少，无法进行 Luo adapt2 相位提取")
+            raise ValueError("有效口径像素太少，无法进行最小二乘空间载波相移LS-SCPS")
 
     axis = _luo_dominant_axis(I, valid_mask)
     delta = _luo_phase_increment(I, period, axis, valid_mask)
@@ -488,7 +488,7 @@ def adapt2_phase(I: np.ndarray, period: int,
 
 @dataclass
 class WFT2Result:
-    """Qian WFF 的复场、质量量和实际搜索参数。"""
+    """加窗傅里叶变换 WFT 的复场、质量量和实际搜索参数。"""
     phase_wrapped: np.ndarray
     amplitude: np.ndarray
     confidence: np.ndarray
@@ -549,10 +549,10 @@ def wft2_phase(I: np.ndarray, period: int,
                carrier_rad: Optional[tuple[float, float]] = None,
                return_result: bool = False) -> np.ndarray | WFT2Result:
     """
-    加窗傅里叶滤波相位提取（对应 MATLAB wft2.m 的 'wff' 模式 + onestep_wff.m）。
+    加窗傅里叶变换 WFT 相位提取（对应原 MATLAB 局部时频滤波实现）。
 
     先在有效孔径内去除缓变背景并自动估计二维载频，再在该载频附近做
-    Gaussian WFF 重构。搜索带会随载频收缩，保证不跨过 DC 或混入共轭边带。
+    Gaussian WFT 重构。搜索带会随载频收缩，保证不跨过 DC 或混入共轭边带。
 
     参数:
         I          : 单张干涉图 (m x n)
@@ -589,7 +589,7 @@ def wft2_phase(I: np.ndarray, period: int,
     if s < 1:
         raise ValueError("sigma 过小")
     m, n = I.shape
-    # WFF 对零频泄漏非常敏感。用归一化 Gaussian 卷积估计缓变背景，
+    # WFT 对零频泄漏非常敏感。用归一化 Gaussian 卷积估计缓变背景，
     # 再把孔径外置零；这样黑色圆外区域不会作为强 DC 边缘参与卷积。
     background_sigma = max(float(period), float(sigma))
     support = gaussian_filter(valid.astype(np.float64), background_sigma,
@@ -680,7 +680,7 @@ def wft2_phase(I: np.ndarray, period: int,
 
 @dataclass
 class TakedaFTResult:
-    """经典 Takeda FT 单帧解调结果与教学诊断量。"""
+    """傅里叶变换 FT 单帧解调结果与完整诊断量。"""
     phase_wrapped: np.ndarray
     amplitude: np.ndarray
     confidence: np.ndarray
@@ -698,7 +698,7 @@ class TakedaFTResult:
 
 @dataclass
 class TakedaSpectrum:
-    """Takeda FT 的预处理频谱，供手动选边带和算法本体共用。"""
+    """傅里叶变换 FT 的预处理频谱，供手动选边带和算法本体共用。"""
     spectrum: np.ndarray
     magnitude: np.ndarray
     spectrum_log: np.ndarray
@@ -711,9 +711,9 @@ def takeda_ft_spectrum(
         I: np.ndarray,
         mask: Optional[np.ndarray] = None,
         apply_hann: bool = True) -> TakedaSpectrum:
-    """计算 Takeda FT 使用的二维频谱，但不自动搜索或滤波一级边带。
+    """计算傅里叶变换 FT 使用的二维频谱，但不自动搜索或滤波一级边带。
 
-    这个入口专门服务教学式手动流程：学生可以先观察中心零频与成对的
+    这个入口用于手动选峰流程：用户可以先观察中心零频与成对的
     一级谱峰，再自行选择其中一个边带。其归一化、孔径外填充和 Hann
     加窗步骤与 :func:`takeda_ft_phase` 完全一致。
     """
@@ -801,7 +801,7 @@ def takeda_ft_phase(
     返回
     ----
     TakedaFTResult
-        包裹相位、复场幅值/置信度以及频谱、滤波窗等完整教学诊断量。
+        包裹相位、复场幅值/置信度以及频谱、滤波窗等完整诊断量。
         相位展开由主流水线统一完成。
     """
     if phase_sign not in (-1, 1):
@@ -1269,7 +1269,7 @@ def simulate_fizeau_pair(size: int = 720,
                          ref_aberrations: Optional[dict] = None,
                          test_aberrations: Optional[dict] = None) -> dict:
     """
-    教学用仿真干涉图生成器（与 examples/generate_simulation.py 同一物理模型）。
+    仿真干涉图生成器（与 examples/generate_simulation.py 同一物理模型）。
 
     返回 dict:
         I_ref, I_test : 参考/待测干涉图 (float64, 0~255)
@@ -1393,11 +1393,11 @@ def build_mask(image_shape, cx: float, cy: float, maskr: int) -> MaskInfo:
 # ---------------------------------------------------------------- Zernike 名称
 
 _PHASE_METHOD_LABELS = {
-    "takeda": "经典 Fourier-transform 法 (Takeda FT)",
-    "masked": "空间载波相移",
+    "takeda": "傅里叶变换FT",
+    "masked": "空间载波相移SCPS",
     "classic": "经典空间相移 (s_T_shift)",
-    "adapt2": "Luo 单载频自适应空间相移 (adapt2)",
-    "wft2": "掩膜自适应加窗傅里叶滤波 (Qian WFF)",
+    "adapt2": "最小二乘空间载波相移LS-SCPS",
+    "wft2": "加窗傅里叶变换WFT",
 }
 
 
@@ -1526,9 +1526,8 @@ def process_fizeau(ref_path: str, test_path: str, period: int,
     phase_method = str(phase_method).lower()
     if phase_method not in ("takeda", "masked", "classic", "adapt2", "wft2"):
         raise ValueError(
-            "phase_method 必须是 'takeda'(经典 FT) / 'masked'(空间载波相移) / "
-            "'classic'(经典 s_T_shift) / 'adapt2'(自适应相移) / "
-            "'wft2'(加窗傅里叶滤波)")
+            "相位算法必须是傅里叶变换FT、空间载波相移SCPS、"
+            "最小二乘空间载波相移LS-SCPS或加窗傅里叶变换WFT")
 
     def report(pct: int, msg: str):
         if progress is not None:
@@ -1554,14 +1553,14 @@ def process_fizeau(ref_path: str, test_path: str, period: int,
     ft_settings = {}
     wft_diagnostics = None
     if phase_method == "takeda":
-        report(14, "待测元件相位提取 (经典 Takeda FT)…")
+        report(14, "待测元件相位提取（傅里叶变换FT）…")
         ft_test = takeda_ft_phase(
             Imaged, mask=mask, carrier_cycles=ft_carrier_cycles,
             center_exclusion_radius=ft_center_exclusion_radius,
             filter_sigma=ft_filter_sigma, apply_hann=ft_apply_hann,
             phase_sign=ft_phase_sign)
         pd = ft_test.phase_wrapped
-        report(32, "参考元件相位提取 (经典 Takeda FT)…")
+        report(32, "参考元件相位提取（傅里叶变换FT）…")
         ft_ref = takeda_ft_phase(
             Imagec, mask=mask, carrier_cycles=ft_carrier_cycles,
             center_exclusion_radius=ft_center_exclusion_radius,
@@ -1578,9 +1577,9 @@ def process_fizeau(ref_path: str, test_path: str, period: int,
             "phase_sign": int(ft_phase_sign),
         }
     elif phase_method == "masked":
-        report(14, "待测元件条纹相位提取 (空间载波相移)…")
+        report(14, "待测元件条纹相位提取（空间载波相移SCPS）…")
         pd = masked_s_T_shift(Imaged, mask, int(period), 1, 21)
-        report(32, "参考元件条纹相位提取 (空间载波相移)…")
+        report(32, "参考元件条纹相位提取（空间载波相移SCPS）…")
         pc = masked_s_T_shift(Imagec, mask, int(period), 1, 21)
     elif phase_method == "classic":
         report(14, "待测元件条纹相位提取 (经典相移 s_T_shift)…")
@@ -1588,19 +1587,19 @@ def process_fizeau(ref_path: str, test_path: str, period: int,
         report(32, "参考元件条纹相位提取 (经典相移 s_T_shift)…")
         pc = s_T_shift(Imagec, int(period), 1, 21)
     elif phase_method == "adapt2":
-        report(14, "待测元件条纹相位提取 (Luo 单载频 adapt2)…")
+        report(14, "待测元件条纹相位提取（最小二乘空间载波相移LS-SCPS）…")
         pd = adapt2_phase(Imaged, int(period), mask=mask)
-        report(32, "参考元件条纹相位提取 (Luo 单载频 adapt2)…")
+        report(32, "参考元件条纹相位提取（最小二乘空间载波相移LS-SCPS）…")
         pc = adapt2_phase(Imagec, int(period), mask=mask)
     else:  # wft2
         # 两幅图共用从参考图估计的载频分支，防止分别选到一对共轭峰。
         carrier = _wft2_carrier(Imagec, mask, int(period))
-        report(14, "待测元件条纹相位提取 (掩膜自适应 Qian WFF)…")
+        report(14, "待测元件条纹相位提取（加窗傅里叶变换WFT）…")
         wft_test = wft2_phase(
             Imaged, int(period), mask=mask, carrier_rad=carrier,
             return_result=True)
         pd = wft_test.phase_wrapped
-        report(32, "参考元件条纹相位提取 (掩膜自适应 Qian WFF)…")
+        report(32, "参考元件条纹相位提取（加窗傅里叶变换WFT）…")
         wft_ref = wft2_phase(
             Imagec, int(period), mask=mask, carrier_rad=carrier,
             return_result=True)
@@ -1612,7 +1611,7 @@ def process_fizeau(ref_path: str, test_path: str, period: int,
     # 同时按质量从优到劣展开，避免误差穿过低质量区域。
     q_shared = phase_derivative_variance(pc, 3)
     if wft_diagnostics is not None:
-        # qg_dunwrap 约定“值越小越可靠”。用两幅图的联合 WFF
+        # qg_dunwrap 约定“值越小越可靠”。用两幅图的联合 WFT
         # 置信度放大低调制度/孔径边缘处的 PDV 代价。
         joint_confidence = np.sqrt(
             wft_diagnostics["test"].confidence

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""经典 Takeda FT 核心与完整流水线回归测试。"""
+"""傅里叶变换 FT 核心与完整流水线回归测试。"""
 
 import os
 
@@ -44,14 +44,14 @@ def wrapped_rms(recovered, truth, evaluation):
 
 image, mask, evaluation, truth, carrier = synthetic_case()
 
-print("=== 1. 手动教学频谱预览 ===")
+print("=== 1. 手动频谱预览 ===")
 preview = takeda_ft_spectrum(image, mask=mask, apply_hann=True)
 assert preview.spectrum_log.shape == image.shape
 assert preview.spectrum.shape == image.shape
 assert preview.window.shape == image.shape
 assert np.iscomplexobj(preview.spectrum)
 
-print("=== 2. 自动边带 Takeda FT（对照） ===")
+print("=== 2. 傅里叶变换FT自动边带（对照） ===")
 auto = takeda_ft_phase(image, mask=mask)
 assert auto.carrier_cycles == carrier, auto.carrier_cycles
 assert auto.sideband_center == (image.shape[0] // 2 + carrier[1],
@@ -98,8 +98,8 @@ assert result.ft_diagnostics["test"].carrier_cycles == (36, 0)
 assert result.ft_diagnostics["reference"].carrier_cycles == (36, 0)
 assert result.global_pv < 400.0, result.global_pv
 report = build_report(result)
-assert "经典 Fourier-transform 法" in report
+assert "傅里叶变换FT" in report
 assert "FT Gaussian" in report
 print(f"流水线 RMS={result.global_rms:.3f} nm, PV={result.global_pv:.3f} nm")
 
-print("\nTAKEDA FT TEST PASSED")
+print("\nFT TEST PASSED")
