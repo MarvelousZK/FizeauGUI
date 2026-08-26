@@ -1,11 +1,13 @@
 # FizeauGUI
 
+> A lightweight desktop demo for Fizeau interferogram phase extraction,
+> phase unwrapping, Zernike fitting, and full-aperture wavefront analysis.
+
 面向实验室算法验证与数据分析的菲索干涉图处理软件。使用 Python、PySide6
 和 Matplotlib 实现单帧载波相位提取、相位展开、Zernike 拟合与完整口径
 波前分析。
 
-> A PySide6 desktop application for Fizeau interferogram phase extraction,
-> phase unwrapping, Zernike fitting, and full-aperture wavefront analysis.
+如果这个项目对你有帮助，欢迎点一个 ⭐ Star！
 
 [下载 Windows 版](https://github.com/MarvelousZK/FizeauGUI/releases/latest/download/FizeauGUI-Windows-x64.exe)
 · [使用说明](docs/使用说明.md)
